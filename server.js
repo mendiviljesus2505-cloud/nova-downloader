@@ -144,8 +144,8 @@ app.post('/api/download', requireAuth, async (req, res) => {
         const options = {
             noWarnings: true,
             noCheckCertificate: true,
-            ffmpegLocation: `"${ffmpegPath}"`,
-            output: `"${outputTemplate}"`,
+            ffmpegLocation: ffmpegPath,
+            output: outputTemplate,
         };
 
         if (isAudio) {
