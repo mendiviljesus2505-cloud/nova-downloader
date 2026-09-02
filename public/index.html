@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova Downloader</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="background-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fa-brands fa-youtube"></i> Nova Downloader</h1>
+            <p>Descarga videos largos en la más alta calidad.</p>
+        </header>
+
+        <main>
+            <!-- Login Screen -->
+            <div id="loginScreen" class="card login-card hidden">
+                <h2><i class="fa-solid fa-lock"></i> Acceso Privado</h2>
+                <p>Por favor, ingresa tu contraseña para continuar.</p>
+                <div class="input-group" style="margin-top: 1.5rem;">
+                    <input type="password" id="passwordInput" placeholder="Contraseña..." autocomplete="current-password">
+                    <button id="loginBtn" class="primary-btn"><i class="fa-solid fa-arrow-right-to-bracket"></i> Entrar</button>
+                </div>
+                <div id="loginError" class="hidden alert error-alert" style="margin-top: 1rem;"></div>
+            </div>
+
+            <!-- Main App Content -->
+            <div id="appContent" class="hidden">
+                <div class="platform-selector" style="display: flex; gap: 1rem; margin-bottom: 1rem; justify-content: center; flex-wrap: wrap;">
+                    <input type="radio" id="platYoutube" name="platform" value="youtube" checked style="display: none;">
+                    <label for="platYoutube" class="platform-btn"><i class="fa-brands fa-youtube"></i> YouTube</label>
+
+                    <input type="radio" id="platInstagram" name="platform" value="instagram" style="display: none;">
+                    <label for="platInstagram" class="platform-btn"><i class="fa-brands fa-instagram"></i> Instagram</label>
+
+                    <input type="radio" id="platFacebook" name="platform" value="facebook" style="display: none;">
+                    <label for="platFacebook" class="platform-btn"><i class="fa-brands fa-facebook"></i> Facebook</label>
+
+                    <input type="radio" id="platTiktok" name="platform" value="tiktok" style="display: none;">
+                    <label for="platTiktok" class="platform-btn"><i class="fa-brands fa-tiktok"></i> TikTok (Sin marca de agua)</label>
+                </div>
+
+                <div class="input-group">
+                <input type="text" id="urlInput" placeholder="Pega el enlace de YouTube aquí..." autocomplete="off">
+                <button id="searchBtn"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
+            </div>
+
+            <div id="loader" class="hidden">
+                <div class="spinner"></div>
+                <p>Obteniendo información...</p>
+            </div>
+
+            <div id="videoInfo" class="card hidden">
+                <div class="thumbnail-container">
+                    <img id="thumbnail" src="" alt="Video Thumbnail">
+                    <span id="duration" class="duration-badge"></span>
+                </div>
+                <div class="info-content">
+                    <h2 id="videoTitle">Título del Video</h2>
+                    
+                    <div class="download-options">
+                        <div class="format-toggle">
+                            <input type="radio" id="formatVideo" name="format" value="video" checked>
+                            <label for="formatVideo"><i class="fa-solid fa-video"></i> Video (MP4)</label>
+                            
+                            <input type="radio" id="formatAudio" name="format" value="audio">
+                            <label for="formatAudio"><i class="fa-solid fa-music"></i> Audio (MP3)</label>
+                        </div>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1.5rem;">
+                            <button id="downloadBtn" class="primary-btn"><i class="fa-solid fa-download"></i> Iniciar Descarga</button>
+                            <button id="newVideoBtn" class="primary-btn" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);"><i class="fa-solid fa-rotate-right"></i> Descargar otro video</button>
+                        </div>
+                    </div>
+                </div>
+            
+            <div id="statusMessage" class="hidden alert"></div>
+            </div> <!-- End appContent -->
+        </main>
+        
+        <footer class="watermark">
+            <p>Powered by <a href="https://novastud.com/" target="_blank" rel="noopener noreferrer"><strong>Nova Studio</strong></a></p>
+        </footer>
+    </div>
+
+    <!-- Download Overlay Modal -->
+    <div id="downloadModal" class="modal hidden">
+        <div class="modal-content" style="padding: 2.5rem; text-align: center; max-width: 400px; background: rgba(30, 41, 59, 0.95);">
+            <div id="downloadSpinner" class="spinner"></div>
+            <h2 id="downloadModalTitle" style="margin-top: 1rem; margin-bottom: 0.5rem; font-size: 1.5rem;">Descargando...</h2>
+            <p id="downloadModalText" style="color: var(--text-secondary); margin-bottom: 1.5rem;">Procesando video en el servidor. Esto puede tomar unos minutos dependiendo de la duración.</p>
+            <button id="downloadModalClose" class="primary-btn hidden">Cerrar</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
