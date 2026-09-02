@@ -102,7 +102,7 @@ app.post('/api/info', requireAuth, async (req, res) => {
             }
         } else {
             // Wrap URL in quotes to prevent CMD from splitting on '&'
-            const safeUrl = `"${url}"`;
+            const safeUrl = url;
             const info = await youtubedl(safeUrl, {
                 dumpSingleJson: true,
                 noWarnings: true,
@@ -170,7 +170,7 @@ app.post('/api/download', requireAuth, async (req, res) => {
 
         console.log(`[DOWNLOAD] Iniciando procesamiento temporal para: ${url}`);
         
-        const safeUrl = `"${url}"`;
+        const safeUrl = url;
         let actualFileId = fileId;
         
         if (url.includes('tiktok.com')) {
