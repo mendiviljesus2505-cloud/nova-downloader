@@ -7,6 +7,7 @@ const youtubedl = require('youtube-dl-exec');
 const ffmpegPath = require('ffmpeg-static');
 const cookieParser = require('cookie-parser');
 const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -29,7 +30,13 @@ const requireAuth = (req, res, next) => {
     return res.status(401).json({ error: 'No autorizado. Por favor inicia sesión.' });
 };
 
-app.post('/api/login', (req, res) => {
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: { error: 'Demasiados intentos de inicio de sesión.' }
+});
+
+app.post('/api/login', loginLimiter, (req, res) => {
     const { password } = req.body;
     if (password === VALID_PASSWORD) {
         const token = crypto.randomBytes(32).toString('hex');
@@ -57,6 +64,23 @@ app.post('/api/logout', (req, res) => {
 });
 // -----------------------------
 
+// SSE Clients Map
+const sseClients = new Map();
+
+app.get('/api/progress', (req, res) => {
+    const fileId = req.query.fileId;
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    
+    res.write(`data: {"status":"connected"}\n\n`);
+    sseClients.set(fileId, res);
+    
+    req.on('close', () => {
+        sseClients.delete(fileId);
+    });
+});
+
 // Ensure temp directory exists
 const tempDir = path.join(__dirname, 'temp_downloads');
 if (!fs.existsSync(tempDir)) {
@@ -79,7 +103,13 @@ setInterval(() => {
     });
 }, 3600000);
 
-app.post('/api/info', requireAuth, async (req, res) => {
+const infoLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    message: { error: 'Has realizado demasiadas búsquedas. Intenta más tarde.' }
+});
+
+app.post('/api/info', infoLimiter, requireAuth, async (req, res) => {
     try {
         const { url } = req.body;
         if (!url) return res.status(400).json({ error: 'URL requerida' });
@@ -87,6 +117,7 @@ app.post('/api/info', requireAuth, async (req, res) => {
         console.log(`[INFO] Obteniendo información de: ${url}`);
         
         let title, thumbnail, duration;
+        let formats = [];
 
         if (url.includes('tiktok.com')) {
             // Using native fetch which is available in Node 18+
@@ -101,18 +132,61 @@ app.post('/api/info', requireAuth, async (req, res) => {
                 throw new Error('Error obteniendo info de TikTok API.');
             }
         } else {
-            // Wrap URL in quotes to prevent CMD from splitting on '&'
-            const safeUrl = url;
-            const info = await youtubedl(safeUrl, {
+            const options = {
                 dumpSingleJson: true,
                 noWarnings: true,
                 noCheckCertificate: true,
-                preferFreeFormats: true,
-                noPlaylist: true
-            });
+                preferFreeFormats: true
+            };
+            
+            // Auto-use cookies.txt if it exists to bypass bot detection
+            const cookiesPath = path.join(__dirname, 'cookies.txt');
+            if (fs.existsSync(cookiesPath)) {
+                options.cookies = `"${cookiesPath}"`;
+            }
+
+            // Wrap in quotes to avoid cmd.exe failing on '&'
+            const safeUrl = `"${url}"`;
+            const info = await youtubedl(safeUrl, options);
+            
+            if (info._type === 'playlist') {
+                title = info.title || 'Playlist sin título';
+                thumbnail = info.thumbnails && info.thumbnails.length > 0 ? info.thumbnails[0].url : null;
+                
+                const entries = (info.entries || []).map(e => ({
+                    title: e.title,
+                    url: e.webpage_url || e.url,
+                    duration: e.duration_string || e.duration || 'N/A'
+                })).filter(e => e.title); // Filter out private/deleted videos that lack titles
+                
+                console.log(`[INFO] Playlist detectada: ${title} con ${entries.length} videos.`);
+                
+                return res.json({
+                    isPlaylist: true,
+                    title,
+                    thumbnail,
+                    entries
+                });
+            }
+
             title = info.title;
             thumbnail = info.thumbnail;
             duration = info.duration_string || info.duration || 'Desconocida';
+            
+            // Extract formats
+            if (info.formats) {
+                const videoFormats = info.formats.filter(f => f.vcodec !== 'none' && f.height);
+                const seenHeights = new Set();
+                videoFormats.sort((a, b) => b.height - a.height).forEach(f => {
+                    if (!seenHeights.has(f.height)) {
+                        seenHeights.add(f.height);
+                        formats.push({
+                            id: f.format_id,
+                            label: `${f.height}p (${f.ext})`
+                        });
+                    }
+                });
+            }
         }
 
         console.log(`[INFO] Éxito al obtener información: ${title}`);
@@ -120,7 +194,8 @@ app.post('/api/info', requireAuth, async (req, res) => {
         res.json({
             title,
             thumbnail,
-            duration
+            duration,
+            formats
         });
     } catch (error) {
         console.error('[ERROR] Error en info:', error.message || error);
@@ -128,25 +203,37 @@ app.post('/api/info', requireAuth, async (req, res) => {
     }
 });
 
-app.post('/api/download', requireAuth, async (req, res) => {
+const downloadLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: 15,
+    message: { error: 'Has alcanzado el límite de descargas concurrentes. Por favor, intenta de nuevo más tarde.' }
+});
+
+app.post('/api/download', downloadLimiter, requireAuth, async (req, res) => {
     try {
-        const { url, type, platform } = req.body;
+        const { url, type, platform, trimStart, trimEnd, fileId: reqFileId } = req.body;
         if (!url) return res.status(400).json({ error: 'URL requerida' });
         
         const isAudio = type === 'audio';
         const ext = isAudio ? 'mp3' : 'mp4';
         
-        // Generate a unique file ID for this download
-        const fileId = `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        // Use provided fileId for SSE or generate one
+        const fileId = reqFileId || `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
         const outputFilename = `${fileId}.%(ext)s`;
         const outputTemplate = path.join(tempDir, outputFilename);
 
         const options = {
             noWarnings: true,
             noCheckCertificate: true,
-            ffmpegLocation: ffmpegPath,
-            output: outputTemplate,
+            ffmpegLocation: path.relative(process.cwd(), ffmpegPath),
+            output: path.relative(process.cwd(), outputTemplate),
         };
+
+        // Auto-use cookies.txt if it exists to bypass bot detection
+        const cookiesPath = path.join(__dirname, 'cookies.txt');
+        if (fs.existsSync(cookiesPath)) {
+            options.cookies = `"${cookiesPath}"`;
+        }
 
         if (isAudio) {
             options.format = 'bestaudio';
@@ -157,20 +244,25 @@ app.post('/api/download', requireAuth, async (req, res) => {
             // Preferimos el codec H.264 (avc) para máxima compatibilidad y evitar errores de "HEVC no soportado" en Windows
             options.formatSort = 'vcodec:h264,res,acodec:m4a';
             
-            if (platform === 'tiktok' || platform === 'instagram' || platform === 'facebook') {
-                // Para redes sociales cortas, descargar la mejor calidad sin límite
-                // yt-dlp ya descarga sin marca de agua por defecto para TikTok
-                options.format = 'bestvideo+bestaudio/best';
+            if (type === 'best' || !type) {
+                if (platform === 'tiktok' || platform === 'instagram' || platform === 'facebook') {
+                    options.format = 'bestvideo+bestaudio/best';
+                } else {
+                    options.format = '"best[height<=720][ext=mp4]/bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/best"';
+                }
             } else {
-                // Evaluamos todos los casos posibles para asegurar que el sistema fluya sin errores:
-                options.format = 'best[height<=720][ext=mp4]/bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/best';
+                // For specific quality, fetch the chosen video id + best audio
+                options.format = `"${type}+bestaudio/best"`;
             }
-            options.concurrentFragments = 4;
+        }
+        
+        if (trimStart && trimEnd) {
+            options.downloadSections = `*${trimStart}-${trimEnd}`;
+            options.forceKeyframesAtCuts = true;
         }
 
         console.log(`[DOWNLOAD] Iniciando procesamiento temporal para: ${url}`);
         
-        const safeUrl = url;
         let actualFileId = fileId;
         
         if (url.includes('tiktok.com')) {
@@ -193,15 +285,62 @@ app.post('/api/download', requireAuth, async (req, res) => {
                 throw new Error('Error en API de TikTok.');
             }
         } else {
-            await youtubedl(safeUrl, options);
+            try {
+                const safeUrl = `"${url}"`;
+                const subprocess = youtubedl.exec(safeUrl, options);
+                
+                subprocess.stdout.on('data', (data) => {
+                    const text = data.toString();
+                    const match = text.match(/\[download\]\s+([\d\.]+)%\s+of\s+.*?\s+at\s+(.*?)\s+ETA\s+(.*)/);
+                    if (match) {
+                        const percent = match[1] + '%';
+                        const speed = match[2];
+                        const eta = match[3];
+                        const client = sseClients.get(fileId);
+                        if (client) {
+                            client.write(`data: ${JSON.stringify({ status: 'downloading', percent, speed, eta })}\n\n`);
+                        }
+                    }
+                });
+
+                await subprocess;
+            } catch (ydlErr) {
+                console.warn(`[WARNING] yt-dlp arrojó un error (posible WinError 32), comprobando si el archivo temp existe...`);
+                // Uncomment to debug if needed:
+                console.error(ydlErr.message);
+            }
+        }
+        
+        // Finish SSE connection
+        const client = sseClients.get(fileId);
+        if (client) {
+            client.write(`data: ${JSON.stringify({ status: 'completed' })}\n\n`);
+            client.end();
+            sseClients.delete(fileId);
         }
         
         // yt-dlp might replace %(ext)s with mkv or webm or mp4, we need to find the actual file it created
-        const filesInDir = fs.readdirSync(tempDir);
-        const createdFile = filesInDir.find(f => f.startsWith(fileId));
+        let filesInDir = fs.readdirSync(tempDir);
+        let createdFile = filesInDir.find(f => f.startsWith(fileId) && !f.includes('.temp.') && !f.endsWith('.part') && !f.endsWith('.ytdl'));
         
         if (!createdFile) {
-            throw new Error('El archivo no se generó correctamente en el servidor.');
+            // Check if there is a .temp. file we can rename due to WinError 32
+            const tempFile = filesInDir.find(f => f.startsWith(fileId) && f.includes('.temp.'));
+            if (tempFile) {
+                const finalName = tempFile.replace('.temp.', '.');
+                try {
+                    // Wait 1.5 seconds for the AV lock to release
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                    fs.renameSync(path.join(tempDir, tempFile), path.join(tempDir, finalName));
+                    createdFile = finalName;
+                    console.log(`[DOWNLOAD] Archivo .temp renombrado manualmente con éxito a ${finalName}`);
+                } catch (renameErr) {
+                    console.error('[ERROR] No se pudo renombrar el archivo temporal:', renameErr);
+                    throw new Error('El archivo quedó bloqueado por el sistema y no se pudo procesar.');
+                }
+            } else {
+                throw new Error('El archivo no se generó correctamente en el servidor.');
+            }
         }
 
         console.log(`[DOWNLOAD] Procesamiento completado. Archivo temporal: ${createdFile}`);
