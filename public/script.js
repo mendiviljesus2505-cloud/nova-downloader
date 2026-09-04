@@ -4,6 +4,20 @@ const loader = document.getElementById('loader');
 const videoInfo = document.getElementById('videoInfo');
 const statusMessage = document.getElementById('statusMessage');
 
+// Playlist variables
+const playlistInfo = document.getElementById('playlistInfo');
+const playlistThumbnail = document.getElementById('playlistThumbnail');
+const playlistTitle = document.getElementById('playlistTitle');
+const playlistCount = document.getElementById('playlistCount');
+const playlistItems = document.getElementById('playlistItems');
+const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+const downloadSelectedBtn = document.getElementById('downloadSelectedBtn');
+const newPlaylistSearchBtn = document.getElementById('newPlaylistSearchBtn');
+const playlistQualitySelect = document.getElementById('playlistQualitySelect');
+
+let isDownloadingPlaylist = false;
+let currentPlaylistEntries = [];
+
 // Auth elements
 const loginScreen = document.getElementById('loginScreen');
 const appContent = document.getElementById('appContent');
@@ -38,7 +52,6 @@ searchBtn.addEventListener('click', fetchVideoInfo);
 urlInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') fetchVideoInfo();
 });
-downloadBtn.addEventListener('click', startDownload);
 
 downloadModalClose.addEventListener('click', () => {
     downloadModal.classList.add('hidden');
