@@ -46,7 +46,16 @@
                     <label for="platFacebook" class="platform-btn"><i class="fa-brands fa-facebook"></i> Facebook</label>
 
                     <input type="radio" id="platTiktok" name="platform" value="tiktok" style="display: none;">
-                    <label for="platTiktok" class="platform-btn"><i class="fa-brands fa-tiktok"></i> TikTok (Sin marca de agua)</label>
+                    <label for="platTiktok" class="platform-btn"><i class="fa-brands fa-tiktok"></i> TikTok</label>
+
+                    <input type="radio" id="platX" name="platform" value="x" style="display: none;">
+                    <label for="platX" class="platform-btn"><i class="fa-brands fa-x-twitter"></i> X (Twitter)</label>
+
+                    <input type="radio" id="platReddit" name="platform" value="reddit" style="display: none;">
+                    <label for="platReddit" class="platform-btn"><i class="fa-brands fa-reddit"></i> Reddit</label>
+                    
+                    <input type="radio" id="platTwitch" name="platform" value="twitch" style="display: none;">
+                    <label for="platTwitch" class="platform-btn"><i class="fa-brands fa-twitch"></i> Twitch</label>
                 </div>
 
                 <div class="input-group">
@@ -68,12 +77,26 @@
                     <h2 id="videoTitle">Título del Video</h2>
                     
                     <div class="download-options">
-                        <div class="format-toggle">
-                            <input type="radio" id="formatVideo" name="format" value="video" checked>
-                            <label for="formatVideo"><i class="fa-solid fa-video"></i> Video (MP4)</label>
-                            
-                            <input type="radio" id="formatAudio" name="format" value="audio">
-                            <label for="formatAudio"><i class="fa-solid fa-music"></i> Audio (MP3)</label>
+                        <div class="format-selection" style="margin-bottom: 1rem;">
+                            <label for="qualitySelect" style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-weight: 600;">Calidad y Formato</label>
+                            <select id="qualitySelect" class="custom-select">
+                                <option value="best">Mejor Calidad (Automático)</option>
+                                <option value="audio">Solo Audio (MP3)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="trim-selection" style="margin-bottom: 1rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-weight: 600;"><i class="fa-solid fa-scissors"></i> Recortar (Opcional)</label>
+                            <div style="display: flex; gap: 1rem;">
+                                <div style="flex: 1;">
+                                    <label for="trimStart" style="font-size: 0.8rem; color: #888;">Inicio (hh:mm:ss)</label>
+                                    <input type="text" id="trimStart" placeholder="Ej: 00:01:20" class="time-input">
+                                </div>
+                                <div style="flex: 1;">
+                                    <label for="trimEnd" style="font-size: 0.8rem; color: #888;">Fin (hh:mm:ss)</label>
+                                    <input type="text" id="trimEnd" placeholder="Ej: 00:02:45" class="time-input">
+                                </div>
+                            </div>
                         </div>
                         
                         <div style="display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1.5rem;">
@@ -82,21 +105,74 @@
                         </div>
                     </div>
                 </div>
-            
+            </div>
+
+            <!-- Playlist Info (Hidden by default) -->
+            <div id="playlistInfo" class="hidden animate-fade-in" style="margin-top: 1.5rem;">
+                <div class="video-details" style="flex-direction: column; align-items: stretch;">
+                    <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+                        <img id="playlistThumbnail" src="" alt="Playlist Thumbnail" style="width: 100px; height: 100px; object-fit: cover; border-radius: var(--radius);">
+                        <div>
+                            <h3 id="playlistTitle" style="margin: 0; color: var(--text-primary);">Título de la Playlist</h3>
+                            <p style="margin: 0.25rem 0 0 0; color: var(--text-secondary); font-size: 0.9rem;" id="playlistCount">0 videos</p>
+                        </div>
+                    </div>
+                    <div class="quality-selector" style="margin-bottom: 1rem;">
+                        <label><i class="fa-solid fa-layer-group"></i> Formato para la lista:</label>
+                        <select id="playlistQualitySelect" class="search-input">
+                            <option value="best">Mejor Calidad (Automático)</option>
+                            <option value="audio">Solo Audio (MP3)</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-secondary);">
+                            <input type="checkbox" id="selectAllCheckbox" checked> Seleccionar Todos
+                        </label>
+                        <button id="downloadSelectedBtn" class="btn"><i class="fa-solid fa-download"></i> Descargar Seleccionados</button>
+                    </div>
+                    <div id="playlistItems" class="playlist-items-container" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem;">
+                        <!-- JS will populate this -->
+                    </div>
+                    <button id="newPlaylistSearchBtn" class="btn btn-secondary" style="margin-top: 1rem; width: 100%;"><i class="fa-solid fa-magnifying-glass"></i> Nueva Búsqueda</button>
+                </div>
+            </div>
+
             <div id="statusMessage" class="hidden alert"></div>
+            
+            <!-- History Panel -->
+            <div id="historyPanel" class="card history-card" style="margin-top: 2rem;">
+                <h2><i class="fa-solid fa-clock-rotate-left"></i> Descargas Recientes</h2>
+                <div id="historyList" class="history-list">
+                    <p class="empty-history" style="color: var(--text-secondary); text-align: center; padding: 1rem 0;">Aún no hay descargas recientes.</p>
+                </div>
+            </div>
+            
             </div> <!-- End appContent -->
         </main>
         
         <footer class="watermark">
-            <p>Powered by <strong>Nova Studio</strong></p>
+            <p>Powered by <a href="https://novastud.com/" target="_blank" rel="noopener noreferrer"><strong>Nova Studio</strong></a></p>
         </footer>
     </div>
 
     <!-- Download Overlay Modal -->
     <div id="downloadModal" class="modal hidden">
-        <div class="modal-content" style="padding: 2.5rem; text-align: center; max-width: 400px; background: rgba(30, 41, 59, 0.95);">
+        <div class="modal-content" style="padding: 2.5rem; text-align: center; max-width: 450px; background: rgba(30, 41, 59, 0.95);">
             <div id="downloadSpinner" class="spinner"></div>
-            <h2 id="downloadModalTitle" style="margin-top: 1rem; margin-bottom: 0.5rem; font-size: 1.5rem;">Descargando...</h2>
+            
+            <!-- Real-time Progress Bar -->
+            <div id="progressContainer" class="hidden" style="margin-top: 1.5rem; width: 100%;">
+                <div class="progress-bar-bg" style="width: 100%; background: rgba(255,255,255,0.1); border-radius: 8px; height: 12px; overflow: hidden; margin-bottom: 0.5rem;">
+                    <div id="progressBarFill" class="progress-bar-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--secondary)); transition: width 0.3s ease;"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #cbd5e1; font-family: monospace;">
+                    <span id="progressPercent">0%</span>
+                    <span id="progressSpeed">0 MB/s</span>
+                </div>
+                <p id="progressETA" style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.2rem; margin-bottom: 0;">Iniciando descarga...</p>
+            </div>
+            
+            <h2 id="downloadModalTitle" style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-size: 1.5rem;">Descargando...</h2>
             <p id="downloadModalText" style="color: var(--text-secondary); margin-bottom: 1.5rem;">Procesando video en el servidor. Esto puede tomar unos minutos dependiendo de la duración.</p>
             <button id="downloadModalClose" class="primary-btn hidden">Cerrar</button>
         </div>
