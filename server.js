@@ -142,12 +142,10 @@ app.post('/api/info', infoLimiter, requireAuth, async (req, res) => {
             // Auto-use cookies.txt if it exists to bypass bot detection
             const cookiesPath = path.join(__dirname, 'cookies.txt');
             if (fs.existsSync(cookiesPath)) {
-                options.cookies = `"${cookiesPath}"`;
+                options.cookies = cookiesPath;
             }
 
-            // Wrap in quotes to avoid cmd.exe failing on '&'
-            const safeUrl = `"${url}"`;
-            const info = await youtubedl(safeUrl, options);
+            const info = await youtubedl(url, options);
             
             if (info._type === 'playlist') {
                 title = info.title || 'Playlist sin título';
@@ -232,7 +230,7 @@ app.post('/api/download', downloadLimiter, requireAuth, async (req, res) => {
         // Auto-use cookies.txt if it exists to bypass bot detection
         const cookiesPath = path.join(__dirname, 'cookies.txt');
         if (fs.existsSync(cookiesPath)) {
-            options.cookies = `"${cookiesPath}"`;
+            options.cookies = cookiesPath;
         }
 
         if (isAudio) {
@@ -248,11 +246,11 @@ app.post('/api/download', downloadLimiter, requireAuth, async (req, res) => {
                 if (platform === 'tiktok' || platform === 'instagram' || platform === 'facebook') {
                     options.format = 'bestvideo+bestaudio/best';
                 } else {
-                    options.format = '"best[height<=720][ext=mp4]/bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/best"';
+                    options.format = 'best[height<=720][ext=mp4]/bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/best';
                 }
             } else {
                 // For specific quality, fetch the chosen video id + best audio
-                options.format = `"${type}+bestaudio/best"`;
+                options.format = `${type}+bestaudio/best`;
             }
         }
         
@@ -286,8 +284,7 @@ app.post('/api/download', downloadLimiter, requireAuth, async (req, res) => {
             }
         } else {
             try {
-                const safeUrl = `"${url}"`;
-                const subprocess = youtubedl.exec(safeUrl, options);
+                const subprocess = youtubedl.exec(url, options);
                 
                 subprocess.stdout.on('data', (data) => {
                     const text = data.toString();
