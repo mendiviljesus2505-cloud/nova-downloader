@@ -136,7 +136,8 @@ app.post('/api/info', infoLimiter, requireAuth, async (req, res) => {
                 dumpSingleJson: true,
                 noWarnings: true,
                 noCheckCertificate: true,
-                preferFreeFormats: true
+                preferFreeFormats: true,
+                extractorArgs: 'youtube:player_client=android,web'
             };
             
             // Auto-use cookies.txt if it exists to bypass bot detection
@@ -225,6 +226,7 @@ app.post('/api/download', downloadLimiter, requireAuth, async (req, res) => {
             noCheckCertificate: true,
             ffmpegLocation: path.relative(process.cwd(), ffmpegPath),
             output: path.relative(process.cwd(), outputTemplate),
+            extractorArgs: 'youtube:player_client=android,web'
         };
 
         // Auto-use cookies.txt if it exists to bypass bot detection
