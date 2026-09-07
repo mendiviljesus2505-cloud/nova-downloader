@@ -137,7 +137,8 @@ app.post('/api/info', infoLimiter, requireAuth, async (req, res) => {
                 noWarnings: true,
                 noCheckCertificate: true,
                 preferFreeFormats: true,
-                extractorArgs: 'youtube:player_client=android,web'
+                forceIpv4: true,
+                extractorArgs: 'youtube:player_client=ios,tv;youtube:player_skip=webpage,configs'
             };
             
             // Auto-use cookies.txt if it exists to bypass bot detection
@@ -226,7 +227,8 @@ app.post('/api/download', downloadLimiter, requireAuth, async (req, res) => {
             noCheckCertificate: true,
             ffmpegLocation: path.relative(process.cwd(), ffmpegPath),
             output: path.relative(process.cwd(), outputTemplate),
-            extractorArgs: 'youtube:player_client=android,web'
+            forceIpv4: true,
+            extractorArgs: 'youtube:player_client=ios,tv;youtube:player_skip=webpage,configs'
         };
 
         // Auto-use cookies.txt if it exists to bypass bot detection
